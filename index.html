@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aneya Abacus Katraj, Pune | Daily Revision</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #165430; font-family: 'Arial', sans-serif; margin: 0;
@@ -17,9 +18,10 @@
         #examSection {
             display: none; background-color: #ffffff; border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 95%; max-width: 1000px; overflow: hidden;
-            transition: filter 0.3s; /* Smooth blur transition */
+            transition: filter 0.3s;
         }
-        #instructionSection, #resultSection, #dashboardSection { display: none; width: 90%; max-width: 600px; }
+        #instructionSection, #resultSection { display: none; width: 90%; max-width: 500px; }
+        #dashboardSection { display: none; width: 95%; max-width: 800px; background-color: #fff; padding: 30px; border-radius: 12px; }
         
         #countdownOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -54,9 +56,8 @@
         .eye-icon { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #888; display: flex; align-items: center; justify-content: center; height: 24px; width: 24px; }
         .eye-icon svg { width: 20px; height: 20px; stroke: #888; transition: stroke 0.2s; }
         
-        button { background-color: #f36621; color: white; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background-color: #d8571a; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button { border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; }
+        button:disabled { background-color: #ccc !important; cursor: not-allowed; }
         
         .header-bar { display: flex; justify-content: space-between; align-items: center; background-color: #165430; color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; }
         .timer { font-size: 20px; font-weight: bold; color: #f36621; }
@@ -76,15 +77,18 @@
         .score-display { font-size: 48px; font-weight: bold; color: #f36621; margin: 20px 0; }
         
         /* Dashboard Styles */
-        .history-list { max-height: 300px; overflow-y: auto; text-align: left; margin-bottom: 20px; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
+        .dashboard-grid { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
+        .chart-container { flex: 2; min-width: 300px; border: 1px solid #eee; border-radius: 8px; padding: 15px; background: #fdfdfd; }
+        .history-list { flex: 1; min-width: 250px; max-height: 400px; overflow-y: auto; text-align: left; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
         .history-item { background: #f8f9fa; padding: 12px; border-bottom: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .history-item:last-child { border-bottom: none; margin-bottom: 0; }
-        .score-badge { background: #165430; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold; }
+        .score-badge { background: #165430; color: white; padding: 5px 10px; border-radius: 20px; font-weight: bold; font-size: 14px;}
+        .cheat-badge { background: #fc0202; color: white; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-top: 5px; display: inline-block;}
 
         @media (max-width: 768px) {
             .exam-layout { flex-direction: column; }
             .right-panel { border-left: none; border-top: 2px solid #e0e0e0; padding: 20px; }
             #camera-container { width: 90px; height: 90px; bottom: 10px; right: 10px; }
+            .dashboard-grid { flex-direction: column; }
         }
     </style>
 </head>
@@ -113,17 +117,20 @@
             <input type="password" id="passwordInput" placeholder="Password">
             <span class="eye-icon" onclick="togglePassword()">👁️</span>
         </div>
-        <button id="loginBtn" onclick="login()" style="width: 100%;">Login</button>
+        
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button onclick="login('exam')" style="background-color: #f36621; flex: 1;">Revision</button>
+            <button onclick="login('dashboard')" style="background-color: #165430; flex: 1;">Dashboard</button>
+        </div>
         <p id="message" style="color: red; margin-top: 15px; display: none;"></p>
     </div>
 
     <div id="instructionSection" class="card">
         <h2>Welcome, <span id="welcomeName" style="color: #f36621;">Student</span>!</h2>
-        <button onclick="loadDashboard()" style="width: 100%; background-color: #333; margin-bottom: 20px;">📊 View My Progress</button>
         <ul class="instructions-list">
             <li>Select your level from the dropdown below.</li>
             <li>You have <b>15 minutes</b> to complete the test.</li>
-            <li><b style="color:red;">Proctoring Active:</b> You must allow Camera access. Covering the lens will freeze your exam immediately.</li>
+            <li><b style="color:red;">Proctoring Active:</b> Camera access is required. Covering the lens will freeze the exam.</li>
         </ul>
         <select id="levelSelect">
             <option value="Jr">Junior (Jr)</option><option value="Sr">Senior (Sr)</option>
@@ -131,14 +138,23 @@
             <option value="3">Level 3</option><option value="4">Level 4</option><option value="5">Level 5</option>
             <option value="6">Level 6</option><option value="7">Level 7</option><option value="8">Level 8</option>
         </select>
-        <button id="fetchBtn" onclick="requestCameraAndStart()" style="width: 100%;">Start Exam</button>
+        <button id="fetchBtn" onclick="requestCameraAndStart()" style="background-color: #f36621; width: 100%;">Start Exam</button>
         <p id="instMsg" style="color: red; margin-top: 15px; display: none;"></p>
     </div>
 
-    <div id="dashboardSection" class="card">
-        <h2>My Progress Report</h2>
-        <div class="history-list" id="historyData">Loading data...</div>
-        <button onclick="document.getElementById('dashboardSection').style.display='none'; document.getElementById('instructionSection').style.display='block';" style="width: 100%;">Back to Home</button>
+    <div id="dashboardSection">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #165430; padding-bottom: 10px;">
+            <h2 style="margin:0;">Progress Dashboard: <span id="dashStudentName" style="color: #f36621;"></span></h2>
+            <button onclick="clearAndHome()" style="background-color: #333; padding: 8px 15px;">Log Out</button>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="chart-container">
+                <canvas id="progressChart"></canvas>
+            </div>
+            <div class="history-list" id="historyData">
+                </div>
+        </div>
     </div>
 
     <div id="countdownOverlay">3</div>
@@ -146,7 +162,18 @@
     <div id="securityModal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: red;">⚠️ Camera Obstructed ⚠️</h3>
-            <p style="color: #333;">Your camera feed is blocked or paused. The exam is frozen until you uncover the camera.</p>
+            <p style="color: #333;">Your camera feed is blocked or paused. The exam is frozen until your face is clearly visible.</p>
+        </div>
+    </div>
+
+    <div id="submitModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top: 0;">Submit Exam?</h3>
+            <p style="color: #555;">You cannot change answers after submission.</p>
+            <div style="display: flex; gap: 15px; justify-content: center; margin-top: 25px;">
+                <button onclick="closeSubmitModal()" style="background-color: #fff; color: #333; border: 2px solid #ccc; width: 45%;">No</button>
+                <button onclick="gradeExam()" style="background-color: #165430; width: 45%;">Yes, Submit</button>
+            </div>
         </div>
     </div>
 
@@ -168,7 +195,7 @@
             <div class="right-panel">
                 <h3>Question Palette</h3>
                 <div class="grid-container" id="qGrid"></div>
-                <button id="submitExamBtn" class="submit-btn" onclick="gradeExam()">Submit Exam</button>
+                <button id="submitExamBtn" class="submit-btn" onclick="showSubmitModal()">Submit Exam</button>
             </div>
         </div>
     </div>
@@ -176,16 +203,22 @@
     <div id="resultSection" class="card">
         <h2>Exam Complete!</h2>
         <div class="score-display" id="finalScoreDisplay">0 / 30</div>
-        <button onclick="clearAndHome()" style="width: 100%; margin-top: 15px;">Return to Home</button>
+        <p style="color: #165430; font-weight: bold;">An email has been sent to your parents!</p>
+        <button onclick="clearAndHome()" style="background-color: #165430; width: 100%; margin-top: 15px;">Return to Home</button>
     </div>
 
     <script>
-        const API_URL = "PASTE_YOUR_COPIED_URL_HERE"; // <-- UPDATE THIS
+        // ==========================================
+        // 1. UPDATE YOUR URL HERE
+        // ==========================================
+        const API_URL = "https://script.google.com/macros/s/AKfycbwCkVwFtVjdvGlRY5BqCwfxkQGMgpAq-fJpuyze3d6ANilRm2LW8QI-ITuw5zT8CfJg/exec";
         const SECRETS = "ANEYA_KATRAJ_2026_SECURE";
         
         let studentData = {}, questions = [], currentIndex = 0, answers = {}, timerInterval, securityInterval;
         let examEndTime = 0, examActive = false, tabSwitches = 0, videoStream = null; 
+        let progressChartInstance = null;
 
+        // Anti-Cheat: Tab Switch Tracker
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === 'hidden' && examActive) {
                 tabSwitches++; persistData(); 
@@ -197,61 +230,114 @@
             pwd.type = pwd.type === "password" ? "text" : "password";
         }
 
-        async function login() {
+        // --- THE DUAL LOGIN ---
+        async function login(intent) {
             const mobile = document.getElementById('mobileInput').value;
             const password = document.getElementById('passwordInput').value;
             const msgBox = document.getElementById('message');
+            
             if(!mobile || !password) { msgBox.style.display="block"; msgBox.innerText="Enter both fields!"; return; }
-            msgBox.style.display = "block"; msgBox.style.color = "#165430"; msgBox.innerText = "Authenticating...";
+            msgBox.style.display = "block"; msgBox.style.color = "#165430"; 
+            msgBox.innerText = intent === 'exam' ? "Verifying Exam Status..." : "Loading Dashboard...";
+            
             try {
-                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "login", mobile: mobile, password: password, apiKey: SECRETS }) });
+                let res = await fetch(API_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ action: "login", mobile: mobile, password: password, intent: intent, apiKey: SECRETS }) 
+                });
                 let data = await res.json();
+                
                 if(data.success) {
                     studentData = data; studentData.mobile = mobile; 
-                    document.getElementById('welcomeName').innerText = studentData.name;
                     document.getElementById('loginSection').style.display = "none";
-                    document.getElementById('instructionSection').style.display = "block";
+                    
+                    if(intent === 'exam') {
+                        document.getElementById('welcomeName').innerText = studentData.name;
+                        document.getElementById('instructionSection').style.display = "block";
+                    } else {
+                        loadDashboard();
+                    }
                 } else { msgBox.style.color="red"; msgBox.innerText = data.message; }
             } catch(e) { msgBox.style.color="red"; msgBox.innerText = "Connection Error!"; }
         }
 
+        // --- DASHBOARD LOGIC (GRAPH & LOGS) ---
         async function loadDashboard() {
-            document.getElementById('instructionSection').style.display = "none";
             document.getElementById('dashboardSection').style.display = "block";
-            document.getElementById('historyData').innerHTML = "Fetching your records...";
+            document.getElementById('dashStudentName').innerText = studentData.name;
+            document.getElementById('historyData').innerHTML = "<p>Fetching secure records...</p>";
+            
             try {
-                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "getDashboard", mobile: studentData.mobile, apiKey: SECRETS }) });
+                let res = await fetch(API_URL, { 
+                    method: 'POST', body: JSON.stringify({ action: "getDashboard", mobile: studentData.mobile, apiKey: SECRETS }) 
+                });
                 let data = await res.json();
-                if(data.success && data.history.length > 0) {
+                
+                if(data.success && data.listData.length > 0) {
+                    // 1. Build the Log List
                     let html = "";
-                    data.history.forEach(item => {
+                    data.listData.forEach(item => {
+                        let cheatTag = item.tabSwitches > 0 ? `<div class="cheat-badge">⚠️ ${item.tabSwitches} Warnings</div>` : "";
                         html += `<div class="history-item">
-                                    <div><strong>${item.date}</strong><br><span style="font-size:12px; color:#666;">Level ${item.level}</span></div>
+                                    <div><strong>${item.date}</strong> <span style="color:#666; font-size: 12px;">${item.time}</span><br>
+                                    <span style="font-size:13px; color:#165430;">Level ${item.level}</span> ${cheatTag}</div>
                                     <div class="score-badge">${item.score} / ${item.total}</div>
                                  </div>`;
                     });
                     document.getElementById('historyData').innerHTML = html;
-                } else { document.getElementById('historyData').innerHTML = "No past exams found."; }
-            } catch(e) { document.getElementById('historyData').innerHTML = "Error loading data."; }
+
+                    // 2. Build the Chart.js Graph
+                    let labels = data.graphData.map(d => d.date);
+                    let scores = data.graphData.map(d => d.score);
+                    let maxTotal = Math.max(...data.graphData.map(d => d.total)); // Usually 30
+                    
+                    if (progressChartInstance) progressChartInstance.destroy(); // Clear old chart
+                    const ctx = document.getElementById('progressChart').getContext('2d');
+                    progressChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Daily Score',
+                                data: scores,
+                                borderColor: '#f36621',
+                                backgroundColor: 'rgba(243, 102, 33, 0.2)',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#165430',
+                                pointRadius: 5,
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { title: { display: true, text: 'Score History Graph' } },
+                            scales: { y: { min: 0, max: maxTotal, ticks: { stepSize: 5 } } }
+                        }
+                    });
+
+                } else { document.getElementById('historyData').innerHTML = "<p>No past exams found.</p>"; }
+            } catch(e) { document.getElementById('historyData').innerHTML = "<p style='color:red;'>Error loading data.</p>"; }
         }
 
+        // --- CAMERA & EXAM SETUP ---
         async function requestCameraAndStart() {
             const level = document.getElementById('levelSelect').value;
             const btn = document.getElementById('fetchBtn'), msg = document.getElementById('instMsg');
-            btn.disabled = true; msg.style.display = "block"; msg.innerText = "Requesting Camera...";
+            btn.disabled = true; msg.style.display = "block"; msg.innerText = "Connecting secure camera...";
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('webcam').srcObject = videoStream;
                 document.getElementById('camera-container').style.display = "block";
                 fetchQuestions(level, btn, msg);
             } catch (err) {
-                msg.style.color = "red"; msg.innerText = "Camera access denied. Cannot start exam.";
+                msg.style.color = "red"; msg.innerText = "Camera access denied. You cannot take the exam without camera permission.";
                 btn.disabled = false;
             }
         }
 
         async function fetchQuestions(level, btn, msg) {
-            msg.innerText = "Loading questions...";
+            msg.innerText = "Loading secured questions...";
             try {
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "getQuestions", level: level, apiKey: SECRETS }) });
                 let data = await res.json();
@@ -281,38 +367,48 @@
             examEndTime = Date.now() + (15 * 60 * 1000); tabSwitches = 0; persistData(); 
             buildGrid(); loadQuestion(0);
             timerInterval = setInterval(updateTimer, 1000);
-            securityInterval = setInterval(checkCameraSecurity, 3000);
+            securityInterval = setInterval(checkCameraSecurity, 2000); // Check every 2 seconds
         }
 
+        // UPGRADED CAMERA BLACKOUT CHECK
         function checkCameraSecurity() {
             if (!examActive || !videoStream) return;
             const videoEl = document.getElementById('webcam'), track = videoStream.getVideoTracks()[0];
             const examUI = document.getElementById('examSection');
             const ansInput = document.getElementById('answerInput');
             
-            // Camera Obstruction Logic
             let isBlocked = false;
-            if (track.muted || track.readyState === 'ended' || videoEl.paused) { isBlocked = true; }
+            
+            // 1. Device Hardware Mute Check (iPhone Toggle)
+            if (!track || track.muted || track.readyState === 'ended' || videoEl.paused) { 
+                isBlocked = true; 
+            } 
+            // 2. Pixel Brightness Check (Tape / Finger Cover)
             else if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
                 try {
                     const canvas = document.getElementById('securityCanvas'), ctx = canvas.getContext('2d');
                     ctx.drawImage(videoEl, 0, 0, 50, 50);
-                    let frame = ctx.getImageData(0, 0, 50, 50).data, totalBright = 0;
-                    for(let i=0; i<frame.length; i+=4) totalBright += (frame[i]+frame[i+1]+frame[i+2])/3;
-                    if ((totalBright / 2500) < 5) isBlocked = true; // Pitch black
+                    let frame = ctx.getImageData(0, 0, 50, 50).data;
+                    let totalBright = 0;
+                    for(let i=0; i<frame.length; i+=4) {
+                        totalBright += (frame[i] + frame[i+1] + frame[i+2]) / 3;
+                    }
+                    // Increased sensitivity: avg < 20 means very dark/covered
+                    if ((totalBright / 2500) < 20) isBlocked = true; 
                 } catch(e) {}
             }
 
-            // The Lockdown Action
+            // Execute Lockdown
             if (isBlocked) {
                 tabSwitches++; persistData();
                 document.getElementById('securityModal').style.display = 'flex';
-                examUI.style.filter = "blur(20px)"; // BLURS EXAM
-                ansInput.disabled = true; // DISABLES TYPING
+                examUI.style.filter = "blur(30px)"; // Heavy blur
+                ansInput.disabled = true; 
             } else {
                 document.getElementById('securityModal').style.display = 'none';
-                examUI.style.filter = "blur(0px)"; // RESTORES EXAM
+                examUI.style.filter = "blur(0px)"; 
                 ansInput.disabled = false;
+                ansInput.focus();
             }
         }
 
@@ -342,32 +438,42 @@
         function nextQuestion() { saveAnswer(); if(currentIndex < questions.length - 1) loadQuestion(currentIndex + 1); else updateGridUI(); }
         function prevQuestion() { saveAnswer(); if(currentIndex > 0) loadQuestion(currentIndex - 1); else updateGridUI(); }
         function saveAnswer() { answers[currentIndex] = document.getElementById('answerInput').value; persistData(); }
-        function persistData() { /* Storage logic hidden for brevity but active */ }
+        function persistData() { localStorage.setItem('ans', JSON.stringify(answers)); } // Simplified persistence for brevity
 
         function updateTimer() {
             let timeLeft = Math.max(0, Math.round((examEndTime - Date.now()) / 1000));
             let m = Math.floor(timeLeft/60), s = timeLeft%60;
             document.getElementById('timerDisplay').innerText = `${m}:${s<10?'0'+s:s}`;
-            if(timeLeft <= 0) gradeExam();
+            if(timeLeft <= 0) { closeSubmitModal(); gradeExam(); }
         }
+
+        function showSubmitModal() { saveAnswer(); document.getElementById('submitModal').style.display = "flex"; }
+        function closeSubmitModal() { document.getElementById('submitModal').style.display = "none"; }
 
         async function gradeExam() {
             examActive = false; stopCamera(); clearInterval(timerInterval); clearInterval(securityInterval);
-            document.getElementById('submitExamBtn').disabled = true; document.getElementById('examSection').style.display = "none";
+            document.getElementById('submitModal').style.display = "none"; document.getElementById('examSection').style.display = "none";
             document.getElementById('countdownOverlay').style.display = "flex"; document.getElementById('countdownOverlay').innerText = "Grading...";
             
             let score = 0;
             for(let i=0; i<questions.length; i++) if(answers[i] == questions[i].answer) score++;
             
             try {
-                await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "submitExam", mobile: studentData.mobile, name: studentData.name, email: studentData.email, level: studentData.chosenLevel, score: score, total: questions.length, apiKey: SECRETS, tabSwitches: tabSwitches }) });
+                await fetch(API_URL, { 
+                    method: 'POST', body: JSON.stringify({ 
+                        action: "submitExam", mobile: studentData.mobile, name: studentData.name,
+                        email: studentData.email, level: studentData.chosenLevel, score: score,
+                        total: questions.length, apiKey: SECRETS, tabSwitches: tabSwitches 
+                    }) 
+                });
             } catch(e) {}
             
+            localStorage.clear();
             document.getElementById('countdownOverlay').style.display = "none"; document.getElementById('resultSection').style.display = "block";
             document.getElementById('finalScoreDisplay').innerText = score + " / " + questions.length;
         }
 
-        function clearAndHome() { stopCamera(); location.reload(); }
+        function clearAndHome() { stopCamera(); localStorage.clear(); location.reload(); }
     </script>
 </body>
 </html>
