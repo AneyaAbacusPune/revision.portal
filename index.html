@@ -52,9 +52,12 @@
         ul.instructions-list { color: #555; line-height: 1.8; font-size: 15px; margin-bottom: 20px; text-align: left; }
         
         input, select { width: 100%; padding: 12px; margin-bottom: 20px; box-sizing: border-box; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 18px; text-align: center; }
+        
+        /* Updated Password SVG Icon Styling */
         .password-container { position: relative; width: 100%; }
         .eye-icon { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #888; display: flex; align-items: center; justify-content: center; height: 24px; width: 24px; }
         .eye-icon svg { width: 20px; height: 20px; stroke: #888; transition: stroke 0.2s; }
+        .eye-icon:hover svg { stroke: #333; }
         
         button { border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; color: white; }
         button:disabled { background-color: #ccc !important; cursor: not-allowed; }
@@ -76,7 +79,6 @@
         .submit-btn { background-color: #f36621; width: 100%; margin-top: auto; }
         .score-display { font-size: 48px; font-weight: bold; color: #f36621; margin: 20px 0; }
         
-        /* Dashboard Styles */
         .dashboard-grid { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
         .chart-container { flex: 2; min-width: 300px; border: 1px solid #eee; border-radius: 8px; padding: 15px; background: #fdfdfd; }
         .history-list { flex: 1; min-width: 250px; max-height: 400px; overflow-y: auto; text-align: left; border: 1px solid #eee; border-radius: 8px; padding: 10px; }
@@ -96,10 +98,10 @@
 
     <script>
         document.onkeydown = function(e) {
-            if(e.keyCode == 123) return false; // F12
-            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
-            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
-            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U
+            if(e.keyCode == 123) return false; 
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
         }
     </script>
 
@@ -113,14 +115,24 @@
     <div id="loginSection" class="card">
         <h2>Aneya Abacus & Vedic Math Centre<br><span style="font-size: 18px; color: #f36621;">Katraj, Pune</span></h2>
         <input type="number" id="mobileInput" placeholder="Mobile Number">
+        
         <div class="password-container">
             <input type="password" id="passwordInput" placeholder="Password">
-            <span class="eye-icon" onclick="togglePassword()">👁️</span>
+            <span class="eye-icon" onclick="togglePassword()">
+                <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <svg id="eyeOpen" style="display: none;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+            </span>
         </div>
         
         <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button onclick="login('exam')" style="background-color: #f36621; flex: 1;">Revision</button>
             <button onclick="login('dashboard')" style="background-color: #165430; flex: 1;">Dashboard</button>
+            <button onclick="login('exam')" style="background-color: #f36621; flex: 1;">Revision</button>
         </div>
         <p id="message" style="color: red; margin-top: 15px; display: none;"></p>
     </div>
@@ -147,13 +159,9 @@
             <h2 style="margin:0;">Progress Dashboard: <span id="dashStudentName" style="color: #f36621;"></span></h2>
             <button onclick="clearAndHome()" style="background-color: #333; padding: 8px 15px;">Log Out</button>
         </div>
-        
         <div class="dashboard-grid">
-            <div class="chart-container">
-                <canvas id="progressChart"></canvas>
-            </div>
-            <div class="history-list" id="historyData">
-                </div>
+            <div class="chart-container"><canvas id="progressChart"></canvas></div>
+            <div class="history-list" id="historyData"></div>
         </div>
     </div>
 
@@ -204,7 +212,7 @@
         <h2>Exam Complete!</h2>
         <div class="score-display" id="finalScoreDisplay">0 / 30</div>
         <p style="color: #165430; font-weight: bold;">An email has been sent to your parents!</p>
-        <button onclick="clearAndHome()" style="background-color: #165430; width: 100%; margin-top: 15px;">Return to Home</button>
+        <button onclick="clearAndHome()" style="background-color: #f36621; width: 100%; margin-top: 15px;">Return to Home</button>
     </div>
 
     <script>
@@ -218,7 +226,6 @@
         let examEndTime = 0, examActive = false, tabSwitches = 0, videoStream = null; 
         let progressChartInstance = null;
 
-        // Anti-Cheat: Tab Switch Tracker
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === 'hidden' && examActive) {
                 tabSwitches++; persistData(); 
@@ -227,10 +234,15 @@
 
         function togglePassword() {
             const pwd = document.getElementById("passwordInput");
-            pwd.type = pwd.type === "password" ? "text" : "password";
+            const eyeClosed = document.getElementById("eyeClosed");
+            const eyeOpen = document.getElementById("eyeOpen");
+            if (pwd.type === "password") { 
+                pwd.type = "text"; eyeClosed.style.display = "none"; eyeOpen.style.display = "block";
+            } else { 
+                pwd.type = "password"; eyeClosed.style.display = "block"; eyeOpen.style.display = "none";
+            }
         }
 
-        // --- THE DUAL LOGIN ---
         async function login(intent) {
             const mobile = document.getElementById('mobileInput').value;
             const password = document.getElementById('passwordInput').value;
@@ -242,39 +254,31 @@
             
             try {
                 let res = await fetch(API_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ action: "login", mobile: mobile, password: password, intent: intent, apiKey: SECRETS }) 
+                    method: 'POST', body: JSON.stringify({ action: "login", mobile: mobile, password: password, intent: intent, apiKey: SECRETS }) 
                 });
                 let data = await res.json();
                 
                 if(data.success) {
                     studentData = data; studentData.mobile = mobile; 
                     document.getElementById('loginSection').style.display = "none";
-                    
                     if(intent === 'exam') {
                         document.getElementById('welcomeName').innerText = studentData.name;
                         document.getElementById('instructionSection').style.display = "block";
-                    } else {
-                        loadDashboard();
-                    }
+                    } else { loadDashboard(); }
                 } else { msgBox.style.color="red"; msgBox.innerText = data.message; }
             } catch(e) { msgBox.style.color="red"; msgBox.innerText = "Connection Error!"; }
         }
 
-        // --- DASHBOARD LOGIC (GRAPH & LOGS) ---
         async function loadDashboard() {
             document.getElementById('dashboardSection').style.display = "block";
             document.getElementById('dashStudentName').innerText = studentData.name;
             document.getElementById('historyData').innerHTML = "<p>Fetching secure records...</p>";
             
             try {
-                let res = await fetch(API_URL, { 
-                    method: 'POST', body: JSON.stringify({ action: "getDashboard", mobile: studentData.mobile, apiKey: SECRETS }) 
-                });
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "getDashboard", mobile: studentData.mobile, apiKey: SECRETS }) });
                 let data = await res.json();
                 
                 if(data.success && data.listData.length > 0) {
-                    // 1. Build the Log List
                     let html = "";
                     data.listData.forEach(item => {
                         let cheatTag = item.tabSwitches > 0 ? `<div class="cheat-badge">⚠️ ${item.tabSwitches} Warnings</div>` : "";
@@ -286,41 +290,28 @@
                     });
                     document.getElementById('historyData').innerHTML = html;
 
-                    // 2. Build the Chart.js Graph
                     let labels = data.graphData.map(d => d.date);
                     let scores = data.graphData.map(d => d.score);
-                    let maxTotal = Math.max(...data.graphData.map(d => d.total)); // Usually 30
+                    let maxTotal = Math.max(...data.graphData.map(d => d.total)); 
                     
-                    if (progressChartInstance) progressChartInstance.destroy(); // Clear old chart
+                    if (progressChartInstance) progressChartInstance.destroy();
                     const ctx = document.getElementById('progressChart').getContext('2d');
                     progressChartInstance = new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: labels,
                             datasets: [{
-                                label: 'Daily Score',
-                                data: scores,
-                                borderColor: '#f36621',
-                                backgroundColor: 'rgba(243, 102, 33, 0.2)',
-                                borderWidth: 3,
-                                pointBackgroundColor: '#165430',
-                                pointRadius: 5,
-                                fill: true,
-                                tension: 0.3
+                                label: 'Daily Score', data: scores, borderColor: '#f36621',
+                                backgroundColor: 'rgba(243, 102, 33, 0.2)', borderWidth: 3,
+                                pointBackgroundColor: '#165430', pointRadius: 5, fill: true, tension: 0.3
                             }]
                         },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: { title: { display: true, text: 'Score History Graph' } },
-                            scales: { y: { min: 0, max: maxTotal, ticks: { stepSize: 5 } } }
-                        }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Score History Graph' } }, scales: { y: { min: 0, max: maxTotal, ticks: { stepSize: 5 } } } }
                     });
-
                 } else { document.getElementById('historyData').innerHTML = "<p>No past exams found.</p>"; }
             } catch(e) { document.getElementById('historyData').innerHTML = "<p style='color:red;'>Error loading data.</p>"; }
         }
 
-        // --- CAMERA & EXAM SETUP ---
         async function requestCameraAndStart() {
             const level = document.getElementById('levelSelect').value;
             const btn = document.getElementById('fetchBtn'), msg = document.getElementById('instMsg');
@@ -367,10 +358,12 @@
             examEndTime = Date.now() + (15 * 60 * 1000); tabSwitches = 0; persistData(); 
             buildGrid(); loadQuestion(0);
             timerInterval = setInterval(updateTimer, 1000);
-            securityInterval = setInterval(checkCameraSecurity, 2000); // Check every 2 seconds
+            securityInterval = setInterval(checkCameraSecurity, 2000);
         }
 
-        // UPGRADED CAMERA BLACKOUT CHECK
+        // ==========================================
+        // NEW PIXEL VARIANCE ALGORITHM (FINGER BLOCK DETECTION)
+        // ==========================================
         function checkCameraSecurity() {
             if (!examActive || !videoStream) return;
             const videoEl = document.getElementById('webcam'), track = videoStream.getVideoTracks()[0];
@@ -379,30 +372,39 @@
             
             let isBlocked = false;
             
-            // 1. Device Hardware Mute Check (iPhone Toggle)
             if (!track || track.muted || track.readyState === 'ended' || videoEl.paused) { 
                 isBlocked = true; 
-            } 
-            // 2. Pixel Brightness Check (Tape / Finger Cover)
-            else if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+            } else if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
                 try {
                     const canvas = document.getElementById('securityCanvas'), ctx = canvas.getContext('2d');
                     ctx.drawImage(videoEl, 0, 0, 50, 50);
                     let frame = ctx.getImageData(0, 0, 50, 50).data;
+                    
                     let totalBright = 0;
+                    let pixels = [];
+                    
                     for(let i=0; i<frame.length; i+=4) {
-                        totalBright += (frame[i] + frame[i+1] + frame[i+2]) / 3;
+                        let brightness = (frame[i] + frame[i+1] + frame[i+2]) / 3;
+                        totalBright += brightness;
+                        pixels.push(brightness);
                     }
-                    // Increased sensitivity: avg < 20 means very dark/covered
-                    if ((totalBright / 2500) < 20) isBlocked = true; 
+                    
+                    let avgBright = totalBright / 2500;
+                    
+                    // Variance measures contrast/detail. Finger cover = 0 detail.
+                    let diffSum = 0;
+                    for(let i=0; i<pixels.length; i++) diffSum += Math.abs(pixels[i] - avgBright);
+                    let variance = diffSum / 2500;
+
+                    // If it is pitch black (<15) OR it lacks any detail/variance like a finger cover (<5)
+                    if (avgBright < 15 || variance < 5) isBlocked = true; 
                 } catch(e) {}
             }
 
-            // Execute Lockdown
             if (isBlocked) {
                 tabSwitches++; persistData();
                 document.getElementById('securityModal').style.display = 'flex';
-                examUI.style.filter = "blur(30px)"; // Heavy blur
+                examUI.style.filter = "blur(30px)"; 
                 ansInput.disabled = true; 
             } else {
                 document.getElementById('securityModal').style.display = 'none';
@@ -438,7 +440,7 @@
         function nextQuestion() { saveAnswer(); if(currentIndex < questions.length - 1) loadQuestion(currentIndex + 1); else updateGridUI(); }
         function prevQuestion() { saveAnswer(); if(currentIndex > 0) loadQuestion(currentIndex - 1); else updateGridUI(); }
         function saveAnswer() { answers[currentIndex] = document.getElementById('answerInput').value; persistData(); }
-        function persistData() { localStorage.setItem('ans', JSON.stringify(answers)); } // Simplified persistence for brevity
+        function persistData() { localStorage.setItem('ans', JSON.stringify(answers)); }
 
         function updateTimer() {
             let timeLeft = Math.max(0, Math.round((examEndTime - Date.now()) / 1000));
