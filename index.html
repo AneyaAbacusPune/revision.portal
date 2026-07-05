@@ -227,7 +227,7 @@
 
     <script>
         // ==========================================
-        // API URL (UPDATED WITH YOUR NEW LINK)
+        // API URL
         // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbynaiUC4KCIubk1EasL70xVD2iPUmQcVOMd7ANp1W69dIGW0AQFkDgA3nYap2lVuSw-/exec";
         const SECRETS = "ANEYA_KATRAJ_2026_SECURE";
@@ -348,17 +348,40 @@
             } catch(e) { document.getElementById('historyData').innerHTML = "<p style='color:red;'>Error loading data.</p>"; }
         }
 
+        // ==========================================
+        // NEW ABACUS-SPECIFIC OPTION GENERATOR
+        // ==========================================
         function generateOptions(correctAnswer) {
             let options = new Set();
             let correct = Number(correctAnswer);
             options.add(correct);
-            while(options.size < 4) {
-                let offset = Math.floor(Math.random() * 21) - 10;
-                if (offset === 0) offset = 15;
-                options.add(correct + offset);
+            
+            // Abacus specific errors: off by 1, off by 5, off by 10, off by 2
+            let possibleOffsets = [1, -1, 5, -5, 10, -10, 2, -2];
+            possibleOffsets.sort(function() { return Math.random() - 0.5; });
+            
+            for (let i = 0; i < possibleOffsets.length; i++) {
+                if (options.size === 4) break;
+                let fakeAns = correct + possibleOffsets[i];
+                // Don't give away the answer by showing obvious negative numbers if correct is positive
+                if (correct >= 0 && fakeAns < 0) continue;
+                options.add(fakeAns);
             }
-            return Array.from(options).sort(() => Math.random() - 0.5);
+            
+            // Fallback just in case
+            let fallback = 1;
+            while(options.size < 4) {
+                if (correct >= 0) {
+                    options.add(correct + fallback);
+                } else {
+                    options.add(correct - fallback);
+                }
+                fallback++;
+            }
+            
+            return Array.from(options).sort(function() { return Math.random() - 0.5; });
         }
+        // ==========================================
 
         async function requestCameraAndStart() {
             const level = document.getElementById('levelSelect').value;
