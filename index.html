@@ -67,6 +67,12 @@
         .math-aligner { display: flex; flex-direction: column; align-items: flex-end; width: 150px; }
         .math-aligner div { text-align: right; width: 100%; letter-spacing: 2px; }
         
+        /* MCQ Grid Styling */
+        .mcq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 300px; margin: 0 auto 30px auto; }
+        .mcq-btn { background: #f8f9fa; border: 2px solid #e0e0e0; padding: 15px; border-radius: 12px; font-size: 22px; font-weight: bold; cursor: pointer; transition: 0.2s; color: #333; }
+        .mcq-btn:hover { border-color: #f36621; }
+        .mcq-btn.selected { background: #f36621; color: white; border-color: #f36621; }
+
         .nav-buttons { display: flex; justify-content: space-between; gap: 15px; }
         .nav-buttons button { width: 48%; background-color: #333; }
         
@@ -75,7 +81,7 @@
         .grid-btn.answered { background-color: #165430; color: white; border-color: #165430; }
         .grid-btn.current { border-color: #f36621; font-weight: bold; box-shadow: 0 0 5px rgba(243,102,33,0.5); }
         .submit-btn { background-color: #f36621; width: 100%; margin-top: auto; }
-        .score-display { font-size: 48px; font-weight: bold; color: #f36621; margin: 20px 0; }
+        .score-display { font-size: 48px; font-weight: bold; color: #f36621; margin: 15px 0; }
         
         .dashboard-grid { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px; }
         .chart-container { flex: 2; min-width: 300px; border: 1px solid #eee; border-radius: 8px; padding: 15px; background: #fdfdfd; }
@@ -129,8 +135,8 @@
         </div>
         
         <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button onclick="login('dashboard')" style="background-color: #165430; flex: 1;">Dashboard</button>
-            <button onclick="login('exam')" style="background-color: #f36621; flex: 1;">Revision</button>
+            <button id="btnDash" onclick="login('dashboard')" style="background-color: #165430; flex: 1;">Dashboard</button>
+            <button id="btnRev" onclick="login('exam')" style="background-color: #f36621; flex: 1;">Revision</button>
         </div>
         <p id="message" style="color: red; margin-top: 15px; display: none;"></p>
     </div>
@@ -173,6 +179,14 @@
         </div>
     </div>
 
+    <div id="tabModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top: 0; color: red;">⚠️ SECURITY WARNING ⚠️</h3>
+            <p style="color: #333;">Tab switching or minimizing the browser has been detected. This activity is logged.</p>
+            <button onclick="document.getElementById('tabModal').style.display='none'" style="background-color: #165430; width: 100%; margin-top: 15px;">I Understand</button>
+        </div>
+    </div>
+
     <div id="submitModal" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: #165430;">Confirm Submission</h3>
@@ -193,8 +207,10 @@
                 </div>
                 <h4 id="currentQInfo">Question 1</h4>
                 <div class="math-container"><div class="math-aligner" id="mathDisplay"></div></div>
-                <input type="number" id="answerInput" placeholder="Your Answer" ondrop="return false;">
-                <div class="nav-buttons">
+                
+                <div id="mcqContainer" class="mcq-grid"></div>
+
+                <div class="nav-buttons" style="display: none;">
                     <button onclick="prevQuestion()">Previous</button>
                     <button onclick="nextQuestion()">Save & Next</button>
                 </div>
@@ -208,10 +224,11 @@
     </div>
     
     <div id="resultSection" class="card">
-        <h3 id="resultLevelDisplay" style="color: #f36621; margin-top: 0; margin-bottom: 5px; border: none; padding: 0;"></h3>
+        <h3 id="resultLevelDisplay" style="color: #f36621; margin-top: 0; margin-bottom: 5px;"></h3>
         <h2 style="margin-top: 0;">Exam Complete!</h2>
         <div class="score-display" id="finalScoreDisplay">0 / 30</div>
-        <p style="color: #165430; font-weight: bold;">An email has been sent to your parents!</p>
+        <p style="color: #555; font-weight: bold; margin-bottom: 5px;">Time Taken: <span id="finalTimeDisplay" style="color: #165430;"></span></p>
+        <p style="color: #165430; font-weight: bold; font-size: 14px;">An email has been sent to your parents!</p>
         <button onclick="clearAndHome()" style="background-color: #f36621; width: 100%; margin-top: 15px;">Return to Home</button>
     </div>
 
@@ -219,16 +236,16 @@
         // ==========================================
         // 1. UPDATE YOUR URL HERE
         // ==========================================
-        const API_URL = "https://script.google.com/macros/s/AKfycbynaiUC4KCIubk1EasL70xVD2iPUmQcVOMd7ANp1W69dIGW0AQFkDgA3nYap2lVuSw-/exec";
+        const API_URL = "https://script.google.com/macros/s/AKfycbwCkVwFtVjdvGlRY5BqCwfxkQGMgpAq-fJpuyze3d6ANilRm2LW8QI-ITuw5zT8CfJg/exec";
         const SECRETS = "ANEYA_KATRAJ_2026_SECURE";
         
-        let studentData = {}, questions = [], currentIndex = 0, answers = {}, timerInterval, securityInterval;
-        let examEndTime = 0, examActive = false, tabSwitches = 0, videoStream = null; 
-        let progressChartInstance = null;
+        let studentData = {}, questions = [], currentIndex = 0, answers = {};
+        let timerInterval, securityInterval, examEndTime = 0, examStartTime = 0;
+        let examActive = false, tabSwitches = 0, videoStream = null, progressChartInstance = null;
 
         function persistData() {
             localStorage.setItem('examState', JSON.stringify({
-                studentData, questions, currentIndex, answers, examEndTime, tabSwitches, examActive
+                studentData, questions, currentIndex, answers, examEndTime, examStartTime, tabSwitches, examActive
             }));
         }
 
@@ -236,11 +253,8 @@
             const savedState = localStorage.getItem('examState');
             if(savedState) {
                 const state = JSON.parse(savedState);
-                studentData = state.studentData; 
-                questions = state.questions; 
-                currentIndex = state.currentIndex; 
-                answers = state.answers; 
-                examEndTime = state.examEndTime; 
+                studentData = state.studentData; questions = state.questions; currentIndex = state.currentIndex; 
+                answers = state.answers; examEndTime = state.examEndTime; examStartTime = state.examStartTime;
                 tabSwitches = state.tabSwitches;
                 
                 if(state.examActive) {
@@ -249,30 +263,26 @@
                     document.getElementById('instructionSection').style.display = "none";
                     
                     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(stream => {
-                        videoStream = stream;
-                        document.getElementById('webcam').srcObject = videoStream;
+                        videoStream = stream; document.getElementById('webcam').srcObject = videoStream;
                         document.getElementById('camera-container').style.display = "block";
                         
                         document.getElementById('examSection').style.display = "block";
                         document.getElementById('studentNameDisplay').innerText = studentData.name;
-                        // UPDATED: Restore Level Display
                         document.getElementById('examLevelDisplay').innerText = "Level " + studentData.chosenLevel;
                         
-                        buildGrid(); 
-                        loadQuestion(currentIndex);
+                        buildGrid(); loadQuestion(currentIndex);
                         timerInterval = setInterval(updateTimer, 1000);
                         securityInterval = setInterval(checkCameraSecurity, 2000);
-                    }).catch(() => {
-                        alert("Camera permission is required to resume your exam. Please allow it and refresh.");
-                    });
+                    }).catch(() => { alert("Camera permission is required to resume your exam."); });
                 }
             }
         };
 
+        // NEW: Custom Modal for Tab Switches instead of blocked alerts
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === 'hidden' && examActive) {
                 tabSwitches++; persistData(); 
-                alert("SECURITY WARNING: Tab switching detected. Your activity is being logged.");
+                document.getElementById('tabModal').style.display = 'flex';
             }
         });
 
@@ -293,67 +303,72 @@
             const msgBox = document.getElementById('message');
             
             if(!mobile || !password) { msgBox.style.display="block"; msgBox.innerText="Enter both fields!"; return; }
+            
+            // LOCKOUT: Prevent double clicking
+            document.getElementById('btnDash').disabled = true;
+            document.getElementById('btnRev').disabled = true;
+
             msgBox.style.display = "block"; msgBox.style.color = "#165430"; 
             msgBox.innerText = intent === 'exam' ? "Verifying Exam Status..." : "Loading Dashboard...";
             
             try {
-                let res = await fetch(API_URL, { 
-                    method: 'POST', body: JSON.stringify({ action: "login", mobile: mobile, password: password, intent: intent, apiKey: SECRETS }) 
-                });
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "login", mobile: mobile, password: password, intent: intent, apiKey: SECRETS }) });
                 let data = await res.json();
                 
                 if(data.success) {
-                    studentData = data; studentData.mobile = mobile; 
-                    document.getElementById('loginSection').style.display = "none";
+                    studentData = data; studentData.mobile = mobile; document.getElementById('loginSection').style.display = "none";
                     if(intent === 'exam') {
-                        document.getElementById('welcomeName').innerText = studentData.name;
-                        document.getElementById('instructionSection').style.display = "block";
+                        document.getElementById('welcomeName').innerText = studentData.name; document.getElementById('instructionSection').style.display = "block";
                     } else { loadDashboard(); }
-                } else { msgBox.style.color="red"; msgBox.innerText = data.message; }
-            } catch(e) { msgBox.style.color="red"; msgBox.innerText = "Connection Error!"; }
+                } else { 
+                    msgBox.style.color="red"; msgBox.innerText = data.message; 
+                    document.getElementById('btnDash').disabled = false; document.getElementById('btnRev').disabled = false;
+                }
+            } catch(e) { 
+                msgBox.style.color="red"; msgBox.innerText = "Connection Error!"; 
+                document.getElementById('btnDash').disabled = false; document.getElementById('btnRev').disabled = false;
+            }
         }
 
         async function loadDashboard() {
-            document.getElementById('dashboardSection').style.display = "block";
-            document.getElementById('dashStudentName').innerText = studentData.name;
+            document.getElementById('dashboardSection').style.display = "block"; document.getElementById('dashStudentName').innerText = studentData.name;
             document.getElementById('historyData').innerHTML = "<p>Fetching secure records...</p>";
-            
             try {
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "getDashboard", mobile: studentData.mobile, apiKey: SECRETS }) });
                 let data = await res.json();
-                
                 if(data.success && data.listData.length > 0) {
                     let html = "";
                     data.listData.forEach(item => {
                         let cheatTag = item.tabSwitches > 0 ? `<div class="cheat-badge">⚠️ ${item.tabSwitches} Warnings</div>` : "";
+                        // NEW: Show Time Taken on Dashboard
+                        let timeTag = item.timeTaken !== "N/A" ? `<br><span style="font-size:12px; color:#555;">⏱️ ${item.timeTaken}</span>` : "";
                         html += `<div class="history-item">
                                     <div><strong>${item.date}</strong> <span style="color:#666; font-size: 12px;">${item.time}</span><br>
-                                    <span style="font-size:13px; color:#165430;">Level ${item.level}</span> ${cheatTag}</div>
+                                    <span style="font-size:13px; color:#165430;">Level ${item.level}</span> ${cheatTag} ${timeTag}</div>
                                     <div class="score-badge">${item.score} / ${item.total}</div>
                                  </div>`;
                     });
                     document.getElementById('historyData').innerHTML = html;
 
-                    let labels = data.graphData.map(d => d.date);
-                    let scores = data.graphData.map(d => d.score);
-                    let maxTotal = Math.max(...data.graphData.map(d => d.total)); 
-                    
+                    let labels = data.graphData.map(d => d.date); let scores = data.graphData.map(d => d.score); let maxTotal = Math.max(...data.graphData.map(d => d.total)); 
                     if (progressChartInstance) progressChartInstance.destroy();
                     const ctx = document.getElementById('progressChart').getContext('2d');
-                    progressChartInstance = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Daily Score', data: scores, borderColor: '#f36621',
-                                backgroundColor: 'rgba(243, 102, 33, 0.2)', borderWidth: 3,
-                                pointBackgroundColor: '#165430', pointRadius: 5, fill: true, tension: 0.3
-                            }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Score History Graph' } }, scales: { y: { min: 0, max: maxTotal, ticks: { stepSize: 5 } } } }
-                    });
+                    progressChartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Daily Score', data: scores, borderColor: '#f36621', backgroundColor: 'rgba(243, 102, 33, 0.2)', borderWidth: 3, pointBackgroundColor: '#165430', pointRadius: 5, fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Score History Graph' } }, scales: { y: { min: 0, max: maxTotal, ticks: { stepSize: 5 } } } } });
                 } else { document.getElementById('historyData').innerHTML = "<p>No past exams found.</p>"; }
             } catch(e) { document.getElementById('historyData').innerHTML = "<p style='color:red;'>Error loading data.</p>"; }
+        }
+
+        // NEW: Helper function to generate 4 realistic MCQ options
+        function generateOptions(correctAnswer) {
+            let options = new Set();
+            let correct = Number(correctAnswer);
+            options.add(correct);
+            while(options.size < 4) {
+                let offset = Math.floor(Math.random() * 21) - 10; // Mix of close numbers
+                if (offset === 0) offset = 15;
+                options.add(correct + offset);
+            }
+            return Array.from(options).sort(() => Math.random() - 0.5); // Shuffle
         }
 
         async function requestCameraAndStart() {
@@ -362,47 +377,35 @@
             btn.disabled = true; msg.style.display = "block"; msg.innerText = "Connecting secure camera...";
             try {
                 videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                document.getElementById('webcam').srcObject = videoStream;
-                document.getElementById('camera-container').style.display = "block";
-                fetchQuestions(level, btn, msg);
-            } catch (err) {
-                msg.style.color = "red"; msg.innerText = "Camera access denied. You cannot take the exam without camera permission.";
-                btn.disabled = false;
-            }
-        }
-
-        async function fetchQuestions(level, btn, msg) {
-            msg.innerText = "Loading secured questions...";
-            try {
+                document.getElementById('webcam').srcObject = videoStream; document.getElementById('camera-container').style.display = "block";
+                
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "getQuestions", level: level, apiKey: SECRETS }) });
                 let data = await res.json();
                 if(data.success && data.questions.length > 0) {
-                    questions = data.questions; studentData.chosenLevel = level; startCountdown();
+                    // NEW: Attach generated options to questions so they persist properly
+                    questions = data.questions.map(q => { q.options = generateOptions(q.answer); return q; });
+                    studentData.chosenLevel = level; startCountdown();
                 } else { msg.style.color="red"; msg.innerText="No questions found!"; btn.disabled=false; stopCamera(); }
-            } catch(e) { msg.style.color="red"; msg.innerText="Error loading questions!"; btn.disabled=false; stopCamera(); }
+            } catch (err) {
+                msg.style.color = "red"; msg.innerText = "Camera access denied. You cannot take the exam without camera permission."; btn.disabled = false;
+            }
         }
 
         function stopCamera() { if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); document.getElementById('camera-container').style.display = "none"; } }
 
         function startCountdown() {
             document.getElementById('instructionSection').style.display = "none";
-            const cEl = document.getElementById('countdownOverlay'); cEl.style.display = "flex";
-            let count = 3; cEl.innerText = count;
-            let interval = setInterval(() => {
-                count--;
-                if(count > 0) cEl.innerText = count;
-                else if(count === 0) cEl.innerText = "GO!";
-                else { clearInterval(interval); cEl.style.display = "none"; startExam(false); }
-            }, 1000);
+            const cEl = document.getElementById('countdownOverlay'); cEl.style.display = "flex"; let count = 3; cEl.innerText = count;
+            let interval = setInterval(() => { count--; if(count > 0) cEl.innerText = count; else if(count === 0) cEl.innerText = "GO!"; else { clearInterval(interval); cEl.style.display = "none"; startExam(false); } }, 1000);
         }
 
         function startExam(isResuming = false) {
             examActive = true; document.getElementById('examSection').style.display = "block";
             document.getElementById('studentNameDisplay').innerText = studentData.name;
-            // UPDATED: Show Level Display
             document.getElementById('examLevelDisplay').innerText = "Level " + studentData.chosenLevel;
             
             if(!isResuming) {
+                examStartTime = Date.now(); // NEW: Track start time
                 examEndTime = Date.now() + (15 * 60 * 1000); tabSwitches = 0; persistData(); 
             }
             
@@ -415,76 +418,70 @@
             if (!examActive || !videoStream) return;
             const videoEl = document.getElementById('webcam'), track = videoStream.getVideoTracks()[0];
             const examUI = document.getElementById('examSection');
-            const ansInput = document.getElementById('answerInput');
             
             let isBlocked = false;
-            
-            if (!track || track.muted || track.readyState === 'ended' || videoEl.paused) { 
-                isBlocked = true; 
-            } else if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+            if (!track || track.muted || track.readyState === 'ended' || videoEl.paused) { isBlocked = true; } 
+            else if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
                 try {
-                    const canvas = document.getElementById('securityCanvas'), ctx = canvas.getContext('2d');
-                    ctx.drawImage(videoEl, 0, 0, 50, 50);
-                    let frame = ctx.getImageData(0, 0, 50, 50).data;
-                    
-                    let totalBright = 0;
-                    let pixels = [];
-                    
-                    for(let i=0; i<frame.length; i+=4) {
-                        let brightness = (frame[i] + frame[i+1] + frame[i+2]) / 3;
-                        totalBright += brightness;
-                        pixels.push(brightness);
-                    }
-                    
-                    let avgBright = totalBright / 2500;
-                    
-                    let diffSum = 0;
+                    const canvas = document.getElementById('securityCanvas'), ctx = canvas.getContext('2d'); ctx.drawImage(videoEl, 0, 0, 50, 50); let frame = ctx.getImageData(0, 0, 50, 50).data;
+                    let totalBright = 0, pixels = [];
+                    for(let i=0; i<frame.length; i+=4) { let brightness = (frame[i] + frame[i+1] + frame[i+2]) / 3; totalBright += brightness; pixels.push(brightness); }
+                    let avgBright = totalBright / 2500, diffSum = 0;
                     for(let i=0; i<pixels.length; i++) diffSum += Math.abs(pixels[i] - avgBright);
                     let variance = diffSum / 2500;
-
                     if (avgBright < 15 || variance < 12) isBlocked = true; 
                 } catch(e) {}
             }
 
             if (isBlocked) {
-                tabSwitches++; persistData();
-                document.getElementById('securityModal').style.display = 'flex';
-                examUI.style.filter = "blur(30px)"; 
-                ansInput.disabled = true; 
+                tabSwitches++; persistData(); document.getElementById('securityModal').style.display = 'flex'; examUI.style.filter = "blur(30px)"; 
             } else {
-                document.getElementById('securityModal').style.display = 'none';
-                examUI.style.filter = "blur(0px)"; 
-                ansInput.disabled = false;
-                ansInput.focus();
+                document.getElementById('securityModal').style.display = 'none'; examUI.style.filter = "blur(0px)"; 
             }
         }
 
         function buildGrid() {
-            let html = "";
-            for(let i=0; i<questions.length; i++) html += `<button class="grid-btn" id="btn-q${i}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
+            let html = ""; for(let i=0; i<questions.length; i++) html += `<button class="grid-btn" id="btn-q${i}" onclick="jumpToQuestion(${i})">${i + 1}</button>`;
             document.getElementById('qGrid').innerHTML = html;
         }
 
         function updateGridUI() {
             for(let i=0; i<questions.length; i++) {
                 let btn = document.getElementById(`btn-q${i}`); btn.className = "grid-btn";
-                if(answers[i]) btn.classList.add('answered');
+                if(answers[i] !== undefined) btn.classList.add('answered');
                 if(i === currentIndex) btn.classList.add('current');
             }
         }
 
+        // NEW: MCQ Rendering Logic
         function loadQuestion(index) {
             currentIndex = index; document.getElementById('currentQInfo').innerText = `Question ${index+1} of ${questions.length}`;
-            document.getElementById('answerInput').value = answers[index] || "";
-            let html = ""; questions[index].sum.split(',').forEach(n => html += `<div>${n.trim()}</div>`);
-            document.getElementById('mathDisplay').innerHTML = html;
-            updateGridUI(); document.getElementById('answerInput').focus(); persistData();
+            let html = ""; questions[index].sum.split(',').forEach(n => html += `<div>${n.trim()}</div>`); document.getElementById('mathDisplay').innerHTML = html;
+            
+            let mcqHtml = "";
+            let currentAnswer = answers[index];
+            questions[index].options.forEach(opt => {
+                let isSelected = (currentAnswer !== undefined && currentAnswer == opt) ? "selected" : "";
+                mcqHtml += `<button class="mcq-btn ${isSelected}" onclick="selectOption(${opt})">${opt}</button>`;
+            });
+            document.getElementById('mcqContainer').innerHTML = mcqHtml;
+            
+            updateGridUI(); persistData();
         }
 
-        function jumpToQuestion(i) { saveAnswer(); loadQuestion(i); }
-        function nextQuestion() { saveAnswer(); if(currentIndex < questions.length - 1) loadQuestion(currentIndex + 1); else updateGridUI(); }
-        function prevQuestion() { saveAnswer(); if(currentIndex > 0) loadQuestion(currentIndex - 1); else updateGridUI(); }
-        function saveAnswer() { answers[currentIndex] = document.getElementById('answerInput').value; persistData(); }
+        // NEW: Option click triggers Auto-Next
+        function selectOption(val) {
+            answers[currentIndex] = val; persistData();
+            loadQuestion(currentIndex); // Re-renders to show Orange selection
+            
+            setTimeout(() => { 
+                if(currentIndex < questions.length - 1) loadQuestion(currentIndex + 1); else updateGridUI(); 
+            }, 400); // 0.4s delay so they visually see they clicked it before switching
+        }
+
+        function jumpToQuestion(i) { loadQuestion(i); }
+        function prevQuestion() { if(currentIndex > 0) loadQuestion(currentIndex - 1); else updateGridUI(); }
+        function nextQuestion() { if(currentIndex < questions.length - 1) loadQuestion(currentIndex + 1); else updateGridUI(); }
 
         function updateTimer() {
             let timeLeft = Math.max(0, Math.round((examEndTime - Date.now()) / 1000));
@@ -493,7 +490,7 @@
             if(timeLeft <= 0) { closeSubmitModal(); gradeExam(); }
         }
 
-        function showSubmitModal() { saveAnswer(); document.getElementById('submitModal').style.display = "flex"; }
+        function showSubmitModal() { document.getElementById('submitModal').style.display = "flex"; }
         function closeSubmitModal() { document.getElementById('submitModal').style.display = "none"; }
 
         async function gradeExam() {
@@ -501,6 +498,10 @@
             document.getElementById('submitModal').style.display = "none"; document.getElementById('examSection').style.display = "none";
             document.getElementById('countdownOverlay').style.display = "flex"; document.getElementById('countdownOverlay').innerText = "Grading...";
             
+            // NEW: Calculate exact Time Taken
+            let totalSecs = Math.floor((Date.now() - examStartTime) / 1000);
+            let timeStr = Math.floor(totalSecs / 60) + "m " + (totalSecs % 60) + "s";
+
             let score = 0;
             for(let i=0; i<questions.length; i++) if(answers[i] == questions[i].answer) score++;
             
@@ -509,7 +510,7 @@
                     method: 'POST', body: JSON.stringify({ 
                         action: "submitExam", mobile: studentData.mobile, name: studentData.name,
                         email: studentData.email, level: studentData.chosenLevel, score: score,
-                        total: questions.length, apiKey: SECRETS, tabSwitches: tabSwitches 
+                        total: questions.length, apiKey: SECRETS, tabSwitches: tabSwitches, timeTaken: timeStr 
                     }) 
                 });
             } catch(e) {}
@@ -517,9 +518,9 @@
             localStorage.removeItem('examState'); 
             document.getElementById('countdownOverlay').style.display = "none"; 
             document.getElementById('resultSection').style.display = "block";
-            // UPDATED: Show Level Display on Result Page
             document.getElementById('resultLevelDisplay').innerText = "Level " + studentData.chosenLevel;
             document.getElementById('finalScoreDisplay').innerText = score + " / " + questions.length;
+            document.getElementById('finalTimeDisplay').innerText = timeStr; // DISPLAY TIME ON SCREEN
         }
 
         function clearAndHome() { stopCamera(); localStorage.removeItem('examState'); location.reload(); }
